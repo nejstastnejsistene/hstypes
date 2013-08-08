@@ -66,3 +66,12 @@ class Curried(Composable):
         else:
             # Return a curried function.
             return self.__class__(self.func, *args)
+
+    def __repr__(self):
+        # Rename the function temporarily to give a better
+        # representation of a curried function.
+        name = self.func.__name__
+        self.func.__name__ += repr(tuple(self.args))
+        ret = repr(self.func)
+        self.func.__name__ = name
+        return ret

@@ -20,3 +20,5 @@ if __name__ == '__main__':
 
     print(double(3))
     print(double_and_square_twice(3))
+
+    print(double)
