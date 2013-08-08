@@ -14,12 +14,24 @@ def square(x):
 
 square_twice = square . square
 
-print(square)
-# <function square at 0x7f7d9531b160>
 print(square(3))
 # 9
-print(square_twice)
-# <function square.square at 0x7f7d9531b0d8>
 print(square_twice(3))
 # 81
+```
+
+## Curried Functions
+
+```python
+@Curried
+def mult(x, y):
+    return x * y
+
+double = mult(2)
+double_and_square_twice = square_twice . double
+
+print(double(3))
+# 6
+print(double_and_square_twice(3))
+# 1296
 ```
