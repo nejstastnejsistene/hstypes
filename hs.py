@@ -50,8 +50,8 @@ class Curried(Composable):
     def __init__(self, func, *args):
         self.func = func
         self.args = list(args)
-        spec = inspect.getargspec(func)
-        if spec.varargs or spec.keywords or spec.defaults:
+        self.arg_spec = spec = inspect.getfullargspec(func)
+        if spec.varargs or spec.varkw or spec.defaults:
             raise TypeError('currying only works with vanilla args')
         self.nargs = len(spec.args)
 
@@ -75,3 +75,35 @@ class Curried(Composable):
         ret = repr(self.func)
         self.func.__name__ = name
         return ret
+
+class PatternMismatch(Exception):
+    pass
+
+class PatternMatched(Curried):
+
+    _functions = {}
+
+    def __init__(self, func):
+        Curried.__init__(self, func)
+        name = func.__name__
+        lst = self._functions.get(name, [])
+        if lst and lst[0].nargs != self.nargs:
+            raise TypeError('another function with this name already '
+                            'exists with a different number or args.')
+        self._functions[name] = lst + [self]
+
+    def check_case(self, *args):
+        args_dict = dict(zip(self.arg_spec.args, args))
+        annotations = self.arg_spec.annotations
+        for key in annotations:
+            if args_dict[key] != annotations[key]:
+                raise PatternMismatch
+        return Curried.__call__(self, *args)
+
+    def __call__(self, *args):
+        for case in self._functions[self.func.__name__]:
+            try:
+                return case.check_case(*args)
+            except PatternMismatch:
+                pass
+        raise PatternMismatch('no cases were matched')

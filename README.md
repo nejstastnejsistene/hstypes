@@ -35,3 +35,25 @@ print(double(3))
 print(double_and_square_twice(3))
 # 1296
 ```
+
+## Pattern Matching
+
+For function definitions using argument annotations.
+
+This still needs some improvement, but it works for now.
+
+```python
+@PatternMatched
+def fact(n:0): return 1
+@PatternMatched
+def fact(n:1): return 1
+@PatternMatched
+def fact(n): return n * fact(n - 1)
+
+print(fact(0))
+# 1
+print(fact(1))
+# 1
+print(fact(5))
+# 120
+```

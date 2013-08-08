@@ -21,4 +21,13 @@ if __name__ == '__main__':
     print(double(3))
     print(double_and_square_twice(3))
 
-    print(double)
+    @PatternMatched
+    def fact(n:0): return 1
+    @PatternMatched
+    def fact(n:1): return 1
+    @PatternMatched
+    def fact(n): return n * fact(n - 1)
+
+    print(fact(0))
+    print(fact(1))
+    print(fact(5))
