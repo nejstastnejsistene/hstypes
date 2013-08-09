@@ -31,3 +31,5 @@ if __name__ == '__main__':
     print(fact(0))
     print(fact(1))
     print(fact(5))
+
+    print(parse('Int -> (Maybe a -> Int) -> a b'))

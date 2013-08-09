@@ -1,5 +1,6 @@
 import functools
 import inspect
+import re
 import sys
 
 
@@ -107,3 +108,123 @@ class PatternMatched(Curried):
             except PatternMismatch:
                 pass
         raise PatternMismatch('no cases were matched')
+
+
+class Lexer(object):
+
+    upper_id = re.compile(r'([A-Z]\w*)\s*')
+    lower_id = re.compile(r'([a-z]\w*)\s*')
+    arrow = re.compile(r'(->)\s*')
+    l_paren = re.compile(r'(\()\s*')
+    r_paren = re.compile(r'(\))\s*')
+    ws = re.compile(r'\s*')
+
+    UPPER_ID = 'UPPER_ID'
+    LOWER_ID = 'LOWER_ID'
+    ARROW = 'ARROW'
+    L_PAREN = 'L_PAREN'
+    R_PAREN = 'R_PAREN'
+    EOF = 'EOF'
+
+    lexemes = [
+        (upper_id, UPPER_ID),
+        (lower_id, LOWER_ID),
+        (arrow, ARROW),
+        (l_paren, L_PAREN),
+        (r_paren, R_PAREN),
+        ]
+
+    def __init__(self, text):
+        self.text = text
+        self.tok = ''
+        self.ttype = None
+        m = self.ws.match(self.text)
+        if m is not None:
+            self.text = self.text[m.end(0):]
+
+    def __iter__(self):
+        while self.ttype != self.EOF:
+            yield next(self)
+
+    def __next__(self):
+        if not self.text:
+            self.tok = ''
+            self.ttype = self.EOF
+            return self.ttype, self.tok
+        else:
+            for lex in Lexer.lexemes:
+                m = lex[0].match(self.text)
+                if m is not None:
+                    self.tok = m.group(1)
+                    self.ttype = lex[1]
+                    self.text = self.text[m.end(0):]
+                    return self.ttype, self.tok
+        raise Exception('invalid text: {!r}'.format(self.text))
+
+
+class Composition(object):
+    def __init__(self, args):
+        self.args = args
+    def __repr__(self):
+        return ' '.join(map(str, self.args))
+
+
+class Lambda(object):
+    def __init__(self, t1, t2):
+        self.t1 = t1
+        self.t2 = t2
+    def __repr__(self, parens=False):
+        if isinstance(self.t2, Lambda):
+            t2 = self.t2.__repr__(True)
+        else:
+            t2 = repr(self.t2)
+        fmt = '{0} -> {1}'
+        if parens:
+            fmt = '(' + fmt + ')'
+        return fmt.format(self.t1, t2)
+
+
+def parse(text):
+    '''Parse a type annotation.
+
+       expr   := simple | lambda | L_PAREN expr R_PAREN
+       simple := id | id simple
+       id     := UPPER_ID | LOWER_ID
+       lambda := expr ARROW expr
+    '''
+    return _parse(Lexer(text))
+
+
+def _parse(tokens):
+    result, left = [], []
+    for ttype, token in tokens:
+        if ttype in (Lexer.UPPER_ID, Lexer.LOWER_ID):
+            # Build a simple type
+            result.append(token)
+        else:
+            # Condense result when finished building it.
+            if result and left or ttype == Lexer.ARROW:
+                if isinstance(result, list):
+                    result = Composition(result)
+            # Left and right are finish, so make lambda.
+            if left and result:
+                result, left = Lambda(left, result), []
+            # Left is finished, start building right side.
+            if result and ttype == Lexer.ARROW:
+                left, result = result, []
+            # Left paren encountered, parse until right paren.
+            elif not result and ttype == Lexer.L_PAREN:
+                # Build a list of tokens until the next right paren.
+                for tok in tokens:
+                    if tok[0] == Lexer.EOF:
+                        raise Exception
+                    elif tok[0] == Lexer.R_PAREN:
+                        # Put an EOF inplace of the right paren and parse.
+                        result.append((Lexer.EOF, ''))
+                        result = _parse(result)
+                        break
+                    else:
+                        result.append(tok)
+            elif ttype != Lexer.EOF:
+                raise Exception
+    return result
